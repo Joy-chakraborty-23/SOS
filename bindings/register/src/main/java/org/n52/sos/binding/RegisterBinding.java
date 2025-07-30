@@ -141,6 +141,46 @@ public class RegisterBinding extends AbstractXmlBinding<OwsServiceRequest> {
             writeOwsExceptionReport(req, res, oer);
         }
     }
+ public class SensorML101Parser {
+-    // old fallback: always now
+-    Date now = new Date();
+-    sensor.setValidTime(new TimeInstant(now));
++    // look for explicit GML TimePeriod or TimeInstant
++    Node validTimeNode = smlDesc.getChild("validTime", SWE_NS);
++    if (validTimeNode != null) {
++        Element tp = validTimeNode.getChild("TimePeriod", GML_NS);
++        if (tp != null) {
++            String begin = tp.getChildText("beginPosition", GML_NS);
++            String end   = tp.getChildText("endPosition",   GML_NS);
++            sensor.setValidTime(new TimePeriod(parseZoned(begin), parseZoned(end)));
++        } else {
++            String instant = validTimeNode.getChildText("TimeInstant", GML_NS);
++            sensor.setValidTime(new TimeInstant(parseZoned(instant)));
++        }
++    } } 
+
+public class InsertSensorHandler {
+-    // old: always write now
+-    validTimeElm.setText(formatter.format(new Date()));
++    // serialize the original validTime (period or instant) if present
++    TimeObject vt = sensor.getValidTime();
++    if (vt instanceof TimePeriod) {
++        TimePeriod tp = (TimePeriod) vt;
++        Element gmlTP = new Element("TimePeriod", GML_NS)
++            .addContent(new Element("beginPosition", GML_NS).setText(tp.getBeginISO()))
++            .addContent(new Element("endPosition",   GML_NS).setText(tp.getEndISO()));
++        validTimeElm.addContent(gmlTP);
++    } else if (vt instanceof TimeInstant) {
++        Element ti = new Element("TimeInstant", GML_NS)
++            .addContent(new Element("timePosition", GML_NS)
++                .setText(((TimeInstant) vt).getTimeISO())));
++        validTimeElm.addContent(ti);
++    } else {
++        // fallback to insertion time only if no validTime set
++        validTimeElm.setText(formatter.format(new Date()));
++    } }
+// else: leave validTime unset
+
 
     private OwsServiceRequest parseRequest(HttpServletRequest req) throws OwsExceptionReport {
         Map<String, String> parameters = Streams.stream(req.getParameterNames())
@@ -385,5 +425,6 @@ public class RegisterBinding extends AbstractXmlBinding<OwsServiceRequest> {
     public List<String> checkParameterMultipleValues(String values, Enum<?> name) throws OwsExceptionReport {
         return checkParameterMultipleValues(values, name.name());
     }
+    
 
 }
