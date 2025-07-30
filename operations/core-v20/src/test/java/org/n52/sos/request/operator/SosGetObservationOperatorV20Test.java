@@ -66,6 +66,16 @@ public class SosGetObservationOperatorV20Test {
         childFeatures = operator.addChildFeatures(new ArrayList<String>(0));
        MatcherAssert.assertThat(childFeatures.isEmpty(), Is.is(Boolean.TRUE));
     }
+    @Test
+public void testValidTimePropagation() {
+    SensorDescription sensor = new SensorDescription();
+    sensor.setValidTime(new TimePeriod("2021-01-01T00:00:00Z", "2021-12-31T23:59:59Z"));
+    Document doc = handler.buildInsertSensorDoc(sensor);
+    String xml = XmlHelper.toString(doc);
+    assertTrue(xml.contains("beginPosition>2021-01-01T00:00:00Z<"));
+    assertTrue(xml.contains("endPosition>2021-12-31T23:59:59Z<"));
+}
+
 
     @Test
     public void should_add_childs_for_features() {
